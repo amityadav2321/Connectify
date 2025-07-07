@@ -7,7 +7,7 @@ const bcrypt = require("bcrypt");
 const userSchema=mongoose.Schema({
     firstName:{
         type:String,
-        require:true,
+        required:true,
         minLength:4,
         maxLength:50
     },
@@ -17,7 +17,7 @@ const userSchema=mongoose.Schema({
     emailId:{
         type:String,
         lowercase:true,
-        require:true,
+        required:true,
         unique:true,
         trim:true,
         validate(value){
@@ -29,7 +29,7 @@ const userSchema=mongoose.Schema({
     },
     password:{
         type:String,
-        require:true,
+        required:true,
         validate(value){
             if(!validator.isStrongPassword(value)){
                 throw new Error("Enter a strong password :"+ value)
@@ -70,7 +70,7 @@ const userSchema=mongoose.Schema({
 
     about:{
         type:String,
-        default:"This is the default about of user!"
+        default:"Hi there! I'm new to this platform and thrilled to start my journey here. I'm passionate about learning, growing, and connecting with people who share similar interests and values. Whether it's collaborating on exciting projects, exchanging ideas, or simply making new friends, I'm always open to meaningful conversations. Let’s connect and inspire each other!"
     }, 
     skills:{
         type:[String]

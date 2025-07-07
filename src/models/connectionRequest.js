@@ -5,20 +5,21 @@ const connectionRequestSchema=new mongoose.Schema({
     fromUserId:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User",  //referance to the user collection
-        require:true,
+        required:true,
     },
     toUserId:{
         type:mongoose.Schema.Types.ObjectId,
         ref:"User",
-        require:true,
+        required:true,
     },
     status:{
         type:String,
+        required:true,
         enum:{
             values:["ignored","interested","accepted","rejected"],
             message:`{VALUE} is incorrect status type`
         },
-        require:true,
+        
     },
     
 },
@@ -36,6 +37,6 @@ connectionRequestSchema.pre("save",function(next){
     }
     next();
 })
-const connectionRequestModel=new mongoose.model("ConnectionRequest",connectionRequestSchema);
+const ConnectionRequestModel=new mongoose.model("ConnectionRequest",connectionRequestSchema);
 
-module.exports=connectionRequestModel;
+module.exports=ConnectionRequestModel;

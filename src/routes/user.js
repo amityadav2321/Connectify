@@ -1,120 +1,94 @@
-const express=require("express");
+const express = require("express");
+const userRouter = express.Router();
+
 const { userAuth } = require("../middlewares/auth");
-const userRouter=express.Router();
-const ConnectionRequest=require("../models/connectionRequest");
-const { set } = require("mongoose");
+const ConnectionRequest = require("../models/connectionRequest");
 const User = require("../models/user");
-const USER_SAFE="firstName lastName age about photoUrl gender skills";
 
-//get all the pending connection request for the loggedIn user
-userRouter.get("/user/requests/received",userAuth,async(req,res)=>{
-     
-    try{
+const USER_SAFE_DATA = "firstName lastName photoUrl age gender about skills";
 
-       
-        
-    const loggedInUser=req.user;
-    const connectionRequests=await ConnectionRequest.find({
-        toUserId:loggedInUser._id,
-        status:"interested",
-    }).populate("fromUserId", USER_SAFE);
+// Get all the pending connection request for the loggedIn user
+userRouter.get("/user/requests/received", userAuth, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
 
-
+    const connectionRequests = await ConnectionRequest.find({
+      toUserId: loggedInUser._id,
+      status: "interested",
+    }).populate("fromUserId", USER_SAFE_DATA);
+    // }).populate("fromUserId", ["firstName", "lastName"]);
 
     res.json({
-        message:"Data fetch successfully!",
-        data:connectionRequests,
-    })
-
-    }
-    catch(err){
-        res.status(400).send("ERROR: "+err.message);
-    }
-    
-    
-    
-  
+      message: "Data fetched successfully",
+      data: connectionRequests,
+    });
+  } catch (err) {
+    req.status(400).send("ERROR: " + err.message);
+  }
 });
 
-userRouter.get("/user/connections",userAuth,async(req,res)=>{
-    try {
-        
-        const loggedUserId=req.user;
+userRouter.get("/user/connections", userAuth, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
 
-        const connection=await ConnectionRequest.find({
-            $or:[
-                {toUserId:loggedUserId._id,status:"accepted"},
-                {fromUserId:loggedUserId._id,status:"accepted"}
-            ]
-        })
-        .populate("fromUserId",USER_SAFE)
-        .populate("toUserId",USER_SAFE);
+    const connectionRequests = await ConnectionRequest.find({
+      $or: [
+        { toUserId: loggedInUser._id, status: "accepted" },
+        { fromUserId: loggedInUser._id, status: "accepted" },
+      ],
+    })
+      .populate("fromUserId", USER_SAFE_DATA)
+      .populate("toUserId", USER_SAFE_DATA);
 
-        const data=connection.map((row)=>{
-            if(row.fromUserId._id.toString()===loggedUserId._id.toString()){
-                return row.toUserId;
-            }
-            return row.fromUserId;
-        });
+    console.log(connectionRequests);
 
-        res.json({data})
+    const data = connectionRequests.map((row) => {
+      if (row.fromUserId._id.toString() === loggedInUser._id.toString()) {
+        return row.toUserId;
+      }
+      return row.fromUserId;
+    });
 
+    res.json({ data });
+  } catch (err) {
+    res.status(400).send({ message: err.message });
+  }
+});
 
-    } catch (err) {
-        res.status(404).send("ERROR: "+err.message);
-    }
-})
+userRouter.get("/feed", userAuth, async (req, res) => {
+  try {
+    const loggedInUser = req.user;
 
-userRouter.get("/feed",userAuth,async(req,res)=>{
+    // const page = parseInt(req.query.page) || 1;
+    // let limit = parseInt(req.query.limit) || 10;
+    // limit = limit > 50 ? 50 : limit;
+    // const skip = (page - 1) * limit;
 
-    try {
+    const connectionRequests = await ConnectionRequest.find({
+      $or: [{ fromUserId: loggedInUser._id }, { toUserId: loggedInUser._id }],
+    }).select("fromUserId  toUserId");
 
-        //user should see all the user cards except
-        //0. his own card 
-        //1. his connections accepted or rejected 
-        //2. the card he alread mark interested or ignore
+    const hideUsersFromFeed = new Set();
+    connectionRequests.forEach((req) => {
+      hideUsersFromFeed.add(req.fromUserId.toString());
+      hideUsersFromFeed.add(req.toUserId.toString());
+    });
 
-        const loggedInUser=req.user;
-        const page=parseInt(req.query.page) || 1;
-        let limit=parseInt(req.query.limit) || 10;
-        limit= limit > 50 ? 50 : limit ;
-        const skip=(page-1)*limit;
-        //find all connection request (sent+received)
-        const connectionRequest=await ConnectionRequest.find({
-            $or:[
-                {fromUserId:loggedInUser._id},
-                {toUserId:loggedInUser._id}
-            ]
-        }).select("fromUserId  toUserId");
+    hideUsersFromFeed.add(loggedInUser._id.toString());
 
-        const hideUserFromFeed= new Set();
-        connectionRequest.forEach(req=>{
-            hideUserFromFeed.add(req.fromUserId.toString());
-            hideUserFromFeed.add(req.toUserId.toString());
-        })
+    const users = await User.find({
+      $and: [
+        { _id: { $nin: Array.from(hideUsersFromFeed) } },
+        { _id: { $ne: loggedInUser._id } },
+      ],
+    })
+      .select(USER_SAFE_DATA)
+    //   .skip(skip)
+    //   .limit(limit);
 
-        const users= await User.find({
-            $and:[
-                {_id: {$nin:Array.from(hideUserFromFeed)}},
-                {_id: {$ne:loggedInUser._id}}
-            ]
-            
-        }).select(USER_SAFE).skip(skip).limit(limit);
-
-
-
-
-        res.json({users})
-
-
-
-
-
-
-    } catch (err) {
-        res.status(400).send("ERROR: "+err.message);
-    }
-
-})
-
-module.exports=userRouter;
+    res.json({ users });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+module.exports = userRouter;
