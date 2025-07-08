@@ -1,4 +1,6 @@
 const express = require("express");
+const mongoose = require("mongoose");
+const ObjectId = mongoose.Types.ObjectId;
 const userRouter = express.Router();
 
 const { userAuth } = require("../middlewares/auth");
@@ -57,30 +59,31 @@ userRouter.get("/user/connections", userAuth, async (req, res) => {
 
 const { Types } = require("mongoose");
 
+
 userRouter.get("/feed", userAuth, async (req, res) => {
   try {
-    const loggedInUserId = req.user._id.toString();
+    const loggedInUserId = req.user._id;
 
-    // Fetch connection requests involving this user
     const connectionRequests = await ConnectionRequest.find({
       $or: [
-        { fromUserId: Types.ObjectId(loggedInUserId) },
-        { toUserId: Types.ObjectId(loggedInUserId) }
+        { fromUserId: loggedInUserId },
+        { toUserId: loggedInUserId },
       ],
     }).select("fromUserId toUserId");
 
-    // Build a set of users to exclude
     const hideUsersFromFeed = new Set();
+
     connectionRequests.forEach((request) => {
       hideUsersFromFeed.add(request.fromUserId.toString());
       hideUsersFromFeed.add(request.toUserId.toString());
     });
 
-    hideUsersFromFeed.add(loggedInUserId); // also exclude self
+    hideUsersFromFeed.add(loggedInUserId.toString());
 
-    // Fetch users not in connection list and not self
     const users = await User.find({
-      _id: { $nin: Array.from(hideUsersFromFeed).map(id => Types.ObjectId(id)) }
+      _id: {
+        $nin: Array.from(hideUsersFromFeed).map((id) => new ObjectId(id)),
+      },
     }).select(USER_SAFE_DATA);
 
     res.json({ users });
@@ -89,6 +92,8 @@ userRouter.get("/feed", userAuth, async (req, res) => {
     res.status(400).json({ message: err.message });
   }
 });
+
+
 
 
 module.exports = userRouter;
