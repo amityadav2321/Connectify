@@ -3,7 +3,7 @@ const bcrypt=require("bcrypt");
 const User = require("../models/user");
 const validator=require("validator");
 const { validateSignUpData } = require("../utils/validation");
-
+const sendMail = require('../utils/resend');
 const authRouter=express.Router();
 
 
@@ -44,7 +44,15 @@ authRouter.post("/signup",async(req,res)=>{
         sameSite: "None",
         expires: new Date(Date.now() + 8 * 3600000), // 8 hours
         });
-         res.json({message:"Data has been saved...",data:savedUser})
+         res.json({message:"Data has been saved...",data:savedUser});
+
+            await sendMail({
+            to: emailId,
+            subject: "Welcome to Connectify 🎉",
+            html: `<h2>Hi ${firstName},</h2><p>Thanks for signing up with Connectify!</p>`,
+            });
+
+            res.json({ message: 'Signup successful and email sent!' });
     }catch(err){
         res.status(400).send("ERROR : "+err.message)
     }
@@ -88,6 +96,16 @@ authRouter.post("/login",async(req,res)=>{
         }else{
             throw new Error("Invaild Credentials");
         }
+
+                await sendMail({
+                to: emailId,
+                subject: "Login Alert - Connectify",
+                html: `<p>Hello ${user.firstName},</p>
+                <p>You just logged into your Connectify account.</p>
+                <p>If this wasn't you, please reset your password immediately.</p>`,
+                });
+
+                res.send(user);
 
 
     }
