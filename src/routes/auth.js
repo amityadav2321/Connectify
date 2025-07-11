@@ -45,66 +45,71 @@ authRouter.post("/signup",async(req,res)=>{
         expires: new Date(Date.now() + 8 * 3600000), // 8 hours
         });
         
+        await sendMail({
+        to: emailId,
+        subject: "Welcome to Connectify 🎉",
+        html: `<h2>Hi ${firstName},</h2><p>Thanks for signing up with Connectify!</p>`,
+    });
 
-            await sendMail({
-            to: emailId,
-            subject: "Welcome to Connectify 🎉",
-            html: `<h2>Hi ${firstName},</h2><p>Thanks for signing up with Connectify!</p>`,
-            });
-
-          res.json({ message: "Signup successful and email sent!", data: savedUser });
+res.json({ message: "Signup successful and email sent!", data: savedUser });
     }catch(err){
         res.status(400).send("ERROR : "+err.message)
     }
 
 })
 
-authRouter.post("/login", async (req, res) => {
-  try {
-    const { emailId, password } = req.body;
+authRouter.post("/login",async(req,res)=>{
 
-    if (!validator.isEmail(emailId)) {
-      return res.status(400).send("ERROR: Enter correct email");
-    }
+    try{
 
-    const user = await User.findOne({ emailId });
-    if (!user) {
-      return res.status(401).send("ERROR: Invalid credentials");
-    }
+        const {emailId,password}=req.body;
 
-    const isPasswordValid = await user.validatePassword(password);
-    if (!isPasswordValid) {
-      return res.status(401).send("ERROR: Invalid credentials");
-    }
+         if(!validator.isEmail(emailId)){
+            throw new Error("Enter correct email")
+        }
 
-    const token = await user.getJWT();
+        const user =await User.findOne({emailId:emailId});
+        if(!user){
+            throw new Error("Invaild Credentials");
+        }
 
-    res.cookie("token", token, {
-      httpOnly: true,
-      secure: true,
-      sameSite: "None",
-      expires: new Date(Date.now() + 8 * 3600000), // 8 hours
-    });
 
-    // Send email (but don't block login if it fails)
-    try {
-      await sendMail({
-        to: emailId,
-        subject: "Login Alert - Connectify",
-        html: `<p>Hello ${user.firstName},</p>
+        const isPasswordValid = await user.validatePassword(password);
+
+        if(isPasswordValid){
+
+            //create a JWT token
+
+            //Add the token to cookie and send the response back to the user
+            const token= await user.getJWT();
+            
+
+                res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: "None",
+                expires: new Date(Date.now() + 8 * 3600000), // 8 hours
+                });
+
+                await sendMail({
+                to: emailId,
+                subject: "Login Alert - Connectify",
+                html: `<p>Hello ${user.firstName},</p>
                <p>You just logged into your Connectify account.</p>
                <p>If this wasn't you, please reset your password immediately.</p>`,
       });
-    } catch (emailErr) {
-      console.error("Login email failed:", emailErr.message);
+
+            res.status(200).json({ message: "Login successful", user });
+        }else{
+            throw new Error("Invaild Credentials");
+        }
+
+
     }
-
-    res.status(200).json({ message: "Login successful", user });
-  } catch (err) {
-    res.status(400).send("ERROR: " + err.message);
-  }
-});
-
+    catch(err){
+        res.status(404).send("ERROR : "+err.message);
+     }
+})
 
 authRouter.post("/logout", async (req, res) => {
   res.cookie("token", null, {
