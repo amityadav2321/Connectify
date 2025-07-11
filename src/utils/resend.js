@@ -11,10 +11,9 @@ const sendMail = async ({ to, subject, html }) => {
       html,
       reply_to: 'itsamityadav2307@gmail.com',   
     });
-    console.log('✅ Email sent:', data);
+
     return data;
   } catch (error) {
-    console.error('❌ Email send error:', error);
     throw error;
   }
 };
