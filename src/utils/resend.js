@@ -2,7 +2,7 @@
 const { Resend } = require('resend');
 
 if (!process.env.RESEND_API_KEY) {
-  throw new Error("❌ RESEND_API_KEY is missing from environment variables.");
+  throw new Error("RESEND_API_KEY is missing from environment variables.");
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -19,7 +19,7 @@ const sendMail = async ({ to, subject, html }) => {
 
     return data;
   } catch (error) {
-    console.error("❌ Email sending failed:", error);
+    console.error("Email sending failed:", error);
     throw error;
   }
 };
